@@ -5,6 +5,7 @@ const cors = require('cors')
 const Person = require('./models/persons')
 const app = express()
 app.use(express.json())
+
 app.use(cors())
 app.use(express.static('build'))
 morgan.token('requestBody', function (req, res) { return JSON.stringify(req.body) })
@@ -20,6 +21,18 @@ app.use(
       tokens['requestBody'](req,res)
     ].join(' ')
   }))
+const errorHandler = (error, request, response, next) => {
+  console.log('ErrorHandler:')
+  console.error(error.message)
+  if(error.message){
+    response.status(401).json({ error: error.message }).end()
+  }
+  else{
+    response.status(500).json().end()
+  }
+  next(error)
+}
+
 
 
 app.get('/api/persons', (req,res) => {
@@ -27,7 +40,7 @@ app.get('/api/persons', (req,res) => {
     res.json(response)
   })
 })
-app.post('/api/persons',(req,res) => {
+app.post('/api/persons',(req,res, next) => {
   const person = req.body
   if(!person.number || !person.name){
     res.status(401).json({ error:'Name and phonenumber must be included in the request' }).end()
@@ -41,46 +54,28 @@ app.post('/api/persons',(req,res) => {
       personMongo.save().then(response => {
         res.json(response).status(201).end()
       }).catch(error => {
-        if(error.errors){
-          const errorFields = Object.keys(error.errors)
-          const errorText = errorFields.reduce((errorText,errorField) => `${errorText} ${error.errors[errorField].properties.message}`,'')
-          res.status(401).json({ error: errorText }).end()
-        }
-        else{
-          res.status(500).json().end()
-        }
-
+        next(error)
       })
-
-
     }
   }).catch(error => {
-    console.log(error)
-    res.status(500).end()
+    next(error)
   })
 })
-app.put('/api/persons/:id',(req,res) => {
+app.put('/api/persons/:id',(req,res,next) => {
   const person = req.body
   if(!person.number || !person.name){
     res.status(401).json({ error:'Name and phonenumber must be included in the request' }).end()
   }
   else{
-    Person.findByIdAndUpdate(req.params.id,person, { new: true}).then(response => {
+    Person.findByIdAndUpdate(req.params.id,person, { new: true }).then(response => {
       res.json(response).status(201).end()
     }).catch(error => {
-      if(error.errors){
-        const errorFields = Object.keys(error.errors)
-        const errorText = errorFields.reduce((errorText,errorField) => `${errorText} ${error.errors[errorField].properties.message}`,'')
-        res.status(401).json({ error: errorText }).end()
-      }
-      else{
-        res.status(500).json().end()
-      }
+      next(error)
     })
   }
 })
 
-app.delete('/api/persons/:id', (req,res) => {
+app.delete('/api/persons/:id', (req,res, next) => {
   Person.findById(req.params.id).then(person => {
     if(person){
       Person.deleteOne({ id:req.params.id }).then(response => {
@@ -95,33 +90,31 @@ app.delete('/api/persons/:id', (req,res) => {
       res.status(404).end()
     }
   }).catch(error => {
-    console.log(error)
-    res.status(500).end()
+    next(error)
   })
 })
-app.get('/api/persons/:id', (req,res) => {
+app.get('/api/persons/:id', (req,res, next) => {
   Person.findById(req.params.id).then(person => {
     if(person){
-      res.json(person)
+      res.json(person).end()
     }
     else{
       res.status(404).end()
     }
   }).catch(error => {
-    console.log(error)
-    res.status(500).end()
+    next(error)
   })
 })
 
-app.get('/info', (req,res) => {
+app.get('/info', (req,res, next) => {
   Person.find({}).then(persons => {
     res.send(`<p>Phonebook has info for ${persons.length} people.</p><p>${new Date()}</p>`)
   }).catch(error => {
-    console.log(error)
-    res.status(500).end()
+    next(error)
   })
 })
 
+app.use(errorHandler)
 
 const PORT = process.env.PORT
 app.listen(PORT, () => {
