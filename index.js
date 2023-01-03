@@ -30,11 +30,11 @@ app.get('/api/persons', (req,res) => {
 app.post('/api/persons',(req,res) => {
   const person = req.body
   if(!person.number || !person.name){
-    res.json({ error:'Name and phonenumber must be included in the request' }).status(401).end()
+    res.status(401).json({ error:'Name and phonenumber must be included in the request' }).end()
   }
   Person.find({}).then(persons => {
     if(persons.find(p => p.name === person.name)){
-      res.json({ error: 'name must be unique' }).status(401).end()
+      res.status(401).json({ error: 'name must be unique' }).end()
     }
     else{
       const personMongo = new Person({ name: person.name,number: person.number })
@@ -62,10 +62,10 @@ app.post('/api/persons',(req,res) => {
 app.put('/api/persons/:id',(req,res) => {
   const person = req.body
   if(!person.number || !person.name){
-    res.json({ error:'Name and phonenumber must be included in the request' }).status(401).end()
+    res.status(401).json({ error:'Name and phonenumber must be included in the request' }).end()
   }
   else{
-    Person.findByIdAndUpdate(req.params.id,person).then(response => {
+    Person.findByIdAndUpdate(req.params.id,person, { new: true}).then(response => {
       res.json(response).status(201).end()
     }).catch(error => {
       if(error.errors){
